@@ -8,9 +8,9 @@ pygame.init()
 SCREEN_WIDTH = 1100
 SCREEN_HEIGHT = 700
 
-R_MAX = 50
+R_MAX = 30
 R_MIN = 20
-SP_MAX = 15
+SP_MAX = 10
 SP_MIN = 5
 A_MAX = 50
 A_MIN = 10
@@ -44,13 +44,13 @@ def number_of_balls():
     for j in range(number_of_b):
         starting_x = randint(R_MAX, SCREEN_WIDTH - R_MAX)
         starting_y = randint(R_MAX, SCREEN_HEIGHT - R_MAX)
-        r = randint(R_MIN, R_MAX)
+        generated_r = randint(R_MIN, R_MAX)
         generated_speed = randint(SP_MIN, SP_MAX)
-        alpha = randint(0, 19) * math.pi / 10
-        color = COLORS[randint(0, 5)]
+        starting_alpha = randint(0, 19) * math.pi / 10
+        generated_color = COLORS[randint(0, 5)]
         full_kinematic_data.append(
-                                   [starting_x, starting_y, r,
-                                    generated_speed, alpha, color]
+                                   [starting_x, starting_y, generated_r,
+                                    generated_speed, starting_alpha, generated_color]
                                   )
     return [number_of_b, full_kinematic_data]
 
@@ -68,7 +68,7 @@ def number_of_trolls():
                                    
     print('Сколько квадратов?')
     number_of_tr = int(input())
-    for i in range(number_of_tr):
+    for j in range(number_of_tr):
         starting_x = randint(A_MAX, SCREEN_WIDTH - A_MAX)
         starting_y = randint(A_MAX, SCREEN_HEIGHT - A_MAX)
         starting_a = randint(A_MIN, A_MAX)
@@ -84,33 +84,22 @@ def number_of_trolls():
     return [number_of_tr, full_kinematic_data_troll]
 
 
-def new_ball():
-    """рисует новый шарик со случайными координатами центра и радиусом"""
-    global x, y, r
-    r = randint(R_MIN, R_MAX)
-    x = randint(2 * r, SCREEN_WIDTH - 2 * r)
-    y = randint(2 * r, SCREEN_HEIGHT - 2 * r)
-
-    color = COLORS[randint(0, 5)]
-    circle(screen, color, (x, y), r)
-
-
-def troll_figure(x_center, y_center, side, color):
+def troll_figure(x_center, y_center, side, const_color):
     """
     Рисует квадрат с центром в точке (x_center, y_center), сторонами a
-    цвета color (в формате, подходящем для pygame.Color)
+    цвета const_color (в формате, подходящем для pygame.Color)
     """
     x_left_up = int(x_center - side / 2)
     y_left_up = int(y_center - side / 2)
     rect(
-         screen, color,
+         screen, const_color,
          (x_left_up, y_left_up, side, side)
         )
 
 
 def mooving_troll_figure(
-                         old_x, old_y, old_a, diff_a,
-                         speed, accel, alpha, color
+                         old_x, old_y, old_a, const_diff_a,
+                         ch_speed, ch_accel, ch_alpha, const_color
                         ):
     """
     Принимает на вход данные о кинематике и цвете квадрата и
@@ -120,101 +109,100 @@ def mooving_troll_figure(
     :param old_x: x-координата начального положения квадрата
     :param old_y: y-координата начального положения квадрата
     :param old_a: начальная длина стороны квадрата
-    :param diff_a: изменение a за 1 кадр ( >0 при увеличении a, <0 при уменьшении
-    :param speed: начальная скорость квадрата
-    :param accel: ускорение квадрата
-    :param alpha: угол между скоростью и осью OX
-    :param color: цвет квадрата в формате, подходящем для pygame.Color
+    :param const_diff_a: изменение a за 1 кадр ( >0 при увеличении a, <0 при уменьшении
+    :param ch_speed: начальная скорость квадрата
+    :param ch_accel: ускорение квадрата
+    :param ch_alpha: угол между скоростью и осью OX
+    :param const_color: цвет квадрата в формате, подходящем для pygame.Color
     :return:
     """
-    alpha = if_hit_the_wall(old_x, old_y, a, alpha)
-    if (speed >= SP_MAX) or (speed <= -SP_MIN):
-        accel = - accel
-    new_x = old_x + speed * math.cos(alpha)
-    new_y = old_y + speed * math.sin(alpha)
+    ch_alpha = if_hit_the_wall(old_x, old_y, a, ch_alpha)
+    if (ch_speed >= SP_MAX) or (ch_speed <= -SP_MIN):
+        ch_accel = - ch_accel
+    new_x = old_x + ch_speed * math.cos(ch_alpha)
+    new_y = old_y + ch_speed * math.sin(ch_alpha)
     if (a >= A_MAX) or (a <= A_MIN):
-        diff_a = - diff_a
-    new_a = old_a + diff_a
-    speed += accel
-    troll_figure(new_x, new_y, new_a, color)
-    kinematic_data_troll = [new_x, new_y, new_a, diff_a,
-                            speed, accel, alpha, color]
+        const_diff_a = - const_diff_a
+    new_a = old_a + const_diff_a
+    ch_speed += accel
+    troll_figure(new_x, new_y, new_a, const_color)
+    kinematic_data_troll = [new_x, new_y, new_a, const_diff_a,
+                            ch_speed, ch_accel, ch_alpha, const_color]
     return kinematic_data_troll
 
 
-def mooving_ball(old_x, old_y, r, speed, alpha, color):
+def mooving_ball(old_x, old_y, const_r, const_speed, old_alpha, const_color):
     """
     Рисует новый шарик на месте старого с небольшим смещением
     :param old_x: координата x начального положения шарика
     :param old_y: координата y начального положения шарика
-    :param r: радиус шарика
-    :param speed: смещение в пикселях за 1 кадр
-    :param alpha: угол между осью OX и вектором смещения
-    :param color: цвет рисуемого шарика
+    :param const_r: радиус шарика
+    :param const_speed: смещение в пикселях за 1 кадр
+    :param old_alpha: угол между осью OX и вектором смещения
+    :param const_color: цвет рисуемого шарика
     kin_data: сохраняет данные о положении, скорости и цвете шарика для расчёта
                     следующего его положения
     """
-    global kin_data
-    alpha = if_hit_the_wall(old_x, old_y, r, alpha)
-    new_x = old_x + speed * math.cos(alpha)
-    new_y = old_y + speed * math.sin(alpha)
-    circle(screen, color, (new_x, new_y), r)
-    kin_data = [new_x, new_y, r,
-                speed, alpha, color]
-    return kin_data
+    new_alpha = if_hit_the_wall(old_x, old_y, const_r, old_alpha)
+    new_x = old_x + const_speed * math.cos(new_alpha)
+    new_y = old_y + const_speed * math.sin(new_alpha)
+    circle(screen, const_color, (new_x, new_y), const_r)
+    kinematic_data = [new_x, new_y, const_r,
+                      const_speed, new_alpha, const_color]
+    return kinematic_data
 
 
-def if_hit_the_wall(x, y, r, changing_alpha):
+def if_hit_the_wall(current_x, current_y, ball_r, changing_alpha):
     """
     Определяет, не столкнулся ли мяч со стеной, и если столкнулся,
     генерирует новое направление его движения (от стены)
-    :param x: x-координата шарика
-    :param y: x-координата шарика
-    :param r: радиус шарика
+    :param current_x: x-координата шарика
+    :param current_y: x-координата шарика
+    :param ball_r: радиус шарика
     :param changing_alpha: существующий угол между осью OX и вектором скорости
     :return: новый угол между осью OX и вектором скорости
     """
-    if x < r:    # Столкновение с левой стеной
+    if current_x < ball_r:    # Столкновение с левой стеной
         changing_alpha = randint(-4, 4) * math.pi / 10
-    elif x > SCREEN_WIDTH - r:    # Столкновение с правой стеной
+    elif current_x > SCREEN_WIDTH - ball_r:    # Столкновение с правой стеной
         changing_alpha = randint(6, 14) * math.pi / 10
-    elif y < r:    # Столкновение с верхней стеной
+    elif current_y < ball_r:    # Столкновение с верхней стеной
         changing_alpha = randint(1, 9) * math.pi / 10
-    elif y > SCREEN_HEIGHT - r:    # Столкновение с нижней стеной
+    elif current_y > SCREEN_HEIGHT - ball_r:    # Столкновение с нижней стеной
         changing_alpha = randint(11, 19) * math.pi / 10
     return changing_alpha
 
 
-def click(event):
+def click(pres_event):
     """
     Определяет, попал ли курсор в момент нажатия в какой-нибудь из шариков или квадратов 
     (если в несколько, то определяет, во сколько именно),
     Увеличивает количество очков и попыток и выводит результат попадания
-    :param event: событие, в частности, нажатие курсора
+    :param pres_event: событие, в частности, нажатие курсора
     """
     global SCORE, TRIES
-    x_of_cursor, y_of_cursor = event.pos
+    x_of_cursor, y_of_cursor = pres_event.pos
     TRIES += 1
     hits = 0
-    for i in range(number_ob):
-        x_of_ball = full_kin_data[i][0]
-        y_of_ball = full_kin_data[i][1]
-        r_of_ball = full_kin_data[i][2]
+    for j in range(number_ob):
+        x_of_ball = full_kin_data[j][0]
+        y_of_ball = full_kin_data[j][1]
+        r_of_ball = full_kin_data[j][2]
         distance = ((x_of_ball-x_of_cursor)**2 + (y_of_ball-y_of_cursor)**2) ** 0.5
         if r_of_ball >= distance:
             SCORE += 1
             hits += 1
-            print('Ты попал в шарик №', i + 1)
-    for i in range(number_tr):
-        x_of_troll = full_kin_data_troll[i][0]
-        y_of_troll = full_kin_data_troll[i][1]
-        a = full_kin_data_troll[i][2]
+            print('Ты попал в шарик №', j + 1)
+    for j in range(number_tr):
+        x_of_troll = full_kin_data_troll[j][0]
+        y_of_troll = full_kin_data_troll[j][1]
+        a_of_troll = full_kin_data_troll[j][2]
         x_dist = abs(x_of_troll - x_of_cursor)
         y_dist = abs(y_of_troll - y_of_cursor)
-        if (a >= x_dist) and (a >= y_dist):
+        if (a_of_troll / 2 >= x_dist) and (a_of_troll / 2 >= y_dist):
             SCORE += 2
             hits += 1
-            print('Ого, ты попал в квадрат №', i + 1, 'это стоит целых 2 очка')
+            print('Ого, ты попал в квадрат №', j + 1, 'это стоит целых 2 очка')
     if hits == 0:
         print('ахахахаха, мимо всех!')
     elif hits > 1:
