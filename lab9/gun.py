@@ -23,7 +23,7 @@ GRAV = 3
 
 
 class Ball:
-    def __init__(self, screen: pygame.Surface, x=40, y=450):
+    def __init__(self, screen: pygame.Surface, x, y):
         """ Конструктор класса ball
 
         Args:
@@ -43,10 +43,9 @@ class Ball:
         """Переместить мяч по прошествии единицы времени.
 
         Метод описывает перемещение мяча за один кадр перерисовки. То есть, обновляет значения
-        self.x и self.y с учетом скоростей self.vx и self.vy, силы гравитации, действующей на мяч,
-        и стен по краям окна (размер окна 800х600).
+        self.x и self.y с учетом скоростей self.vx и self.vy и силы гравитации, действующей на мяч.
         """
-        
+
         self.x += self.vx
         self.y -= self.vy
         self.vy -= GRAV
@@ -132,6 +131,64 @@ class Gun:
             self.color = GREY
 
 
+class Tank():
+    def __init__(self, screen):
+        self.screen = screen
+        self.x = 400
+        self.y = 500
+        self.f2_power = 10
+        self.f2_on = 0
+        self.an = 1
+        self.color = GREEN
+
+    def targetting(self, event):
+        """Прицеливание. Зависит от положения мыши."""
+        if event and (event.pos[0] < self.y) :
+            self.an = math.atan((event.pos[0]-20) / (event.pos[1]-450))
+        if self.f2_on:
+            self.color = RED
+        else:
+            self.color = GREY
+    def fire2_start(self, event):
+        self.f2_on = 1
+
+    def fire2_end(self, event):
+        """Выстрел мячом.
+
+        Происходит при отпускании кнопки мыши.
+        Начальные значения компонент скорости мяча vx и vy зависят от положения мыши.
+        """
+        global balls, bullet
+        bullet += 1
+        new_ball = Ball(self.screen, self.x, self.y)
+        new_ball.r += 5
+        self.an = math.atan2((event.pos[1]-new_ball.y), (event.pos[0]-new_ball.x))
+        new_ball.vx = self.f2_power * math.cos(self.an)
+        new_ball.vy = - self.f2_power * math.sin(self.an)
+        balls.append(new_ball)
+        self.f2_on = 0
+        self.f2_power = 10
+
+    def power_up(self):
+        if self.f2_on:
+            if self.f2_power < 100:
+                self.f2_power += 1
+            self.color = RED
+        else:
+            self.color = GREY
+
+    def draw(self):
+        x11 = self.x - 5 * math.sin(self.an)
+        y11 = self.y + 5 * math.cos(self.an)
+        x12 = self.x + 5 * math.sin(self.an)
+        y12 = self.y - 5 * math.cos(self.an)
+
+        x21 = self.x + (self.f2_power + 10) * math.cos(self.an) + 5 * math.sin(self.an)
+        y21 = self.y + (self.f2_power + 10) * math.sin(self.an) - 5 * math.cos(self.an)
+        x22 = self.x + (self.f2_power + 10) * math.cos(self.an) - 5 * math.sin(self.an)
+        y22 = self.y + (self.f2_power + 10) * math.sin(self.an) + 5 * math.cos(self.an)
+        pygame.draw.polygon(self.screen, self.color, [[x11, y11], [x12, y12], [x21, y21], [x22, y22]])
+
 class Target:
     def __init__(self):
         self.screen = screen
@@ -139,6 +196,8 @@ class Target:
         self.live = 1
         self.x = 600
         self.y = 300
+        self.vx = randint(-5, 5)
+        self.vy = randint(-5, 5)
         self.r = 50
         self.color = RED
 
@@ -149,12 +208,23 @@ class Target:
         self.x = randint(600, 780)
         self.y = randint(300, 550)
         self.r = randint(25, 50)
+        self.vx = randint(-5, 5)
+        self.vy = randint(-5, 5)
         self.live = 1
 
     def hit(self, points=1):
         """Попадание шарика в цель."""
         self.points += points
 
+    def move(self):
+        """Переместить уель по прошествии единицы времени.
+
+        Метод описывает перемещение цели за один кадр перерисовки. То есть, обновляет значения
+        self.x и self.y с учетом скоростей self.vx и self.vy
+        """
+
+        self.x += self.vx
+        self.y -= self.vy
     def draw(self):
         pygame.draw.circle(self.screen, self.color, [self.x, self.y], self.r)
 
@@ -166,12 +236,14 @@ balls = []
 
 clock = pygame.time.Clock()
 gun = Gun(screen)
+tank = Tank(screen)
 target = Target()
 finished = False
 
 while not finished:
     screen.fill(WHITE)
-    gun.draw()
+    tank.draw()
+    target.move()
     target.draw()
     for b in balls:
         b.draw()
@@ -182,11 +254,11 @@ while not finished:
         if event.type == pygame.QUIT:
             finished = True
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            gun.fire2_start(event)
+            tank.fire2_start(event)
         elif event.type == pygame.MOUSEBUTTONUP:
-            gun.fire2_end(event)
+            tank.fire2_end(event)
         elif event.type == pygame.MOUSEMOTION:
-            gun.targetting(event)
+            tank.targetting(event)
 
     for b in balls:
         b.move()
