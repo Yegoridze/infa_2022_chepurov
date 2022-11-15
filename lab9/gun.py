@@ -49,6 +49,12 @@ class Ball:
         self.x += self.vx
         self.y -= self.vy
         self.vy -= GRAV
+        if (self.x + self.r >= WIDTH) and (self.vx > 0):
+            self.vx *= -1
+        elif (self.x - self.r <= 0) and (self.vx < 0):
+            self.vx *= -1
+        if (self.y - self.r <= 0) and (self.vy > 0):
+            self.vy *= -1
 
     def draw(self):
         pygame.draw.circle(
@@ -71,6 +77,10 @@ class Ball:
         if len < self.r + obj.r:
             hit = 1
         return hit
+
+
+class Knipel:
+    pass
 
 
 class Gun:
@@ -138,8 +148,9 @@ class Tank():
         self.y = 570
         self.f2_power = 10
         self.f2_on = 0
-        self.an = 1
+        self.an = 0
         self.color = GREEN
+        self.bullet = 1
 
     def targetting(self, event):
         """Прицеливание. Зависит от положения мыши."""
@@ -162,9 +173,10 @@ class Tank():
         bullet += 1
         new_ball = Ball(self.screen, self.x, self.y)
         new_ball.r += 5
-        self.an = math.atan2((event.pos[1]-new_ball.y), (event.pos[0]-new_ball.x))
-        new_ball.vx = self.f2_power * math.cos(self.an)
-        new_ball.vy = - self.f2_power * math.sin(self.an)
+        if event.pos[1] < self.y:
+            self.an = math.atan((event.pos[0]-self.x) / (event.pos[1]-self.y))
+        new_ball.vx = - self.f2_power * math.sin(self.an)
+        new_ball.vy = self.f2_power * math.cos(self.an)
         balls.append(new_ball)
         self.f2_on = 0
         self.f2_power = 10
@@ -177,18 +189,40 @@ class Tank():
         else:
             self.color = GREY
 
+    def move(self):
+        speed = 0
+        pressed_keys = pygame.key.get_pressed()
+        if pressed_keys[97] and (not (pressed_keys[100])):
+            speed = -7
+        elif (not (pressed_keys[97])) and pressed_keys[100]:
+            speed = 7
+        self.x += speed
+
     def draw(self):
         y11 = self.y + 5 * math.sin(self.an)
         x11 = self.x - 5 * math.cos(self.an)
         y12 = self.y - 5 * math.sin(self.an)
         x12 = self.x + 5 * math.cos(self.an)
 
-        y21 = self.y - (self.f2_power + 10) * math.cos(self.an) - 5 * math.sin(self.an)
-        x21 = self.x - (self.f2_power + 10) * math.sin(self.an) + 5 * math.cos(self.an)
-        y22 = self.y - (self.f2_power + 10) * math.cos(self.an) + 5 * math.sin(self.an)
-        x22 = self.x - (self.f2_power + 10) * math.sin(self.an) - 5 * math.cos(self.an)
+        y21 = self.y - (self.f2_power + 20) * math.cos(self.an) - 5 * math.sin(self.an)
+        x21 = self.x - (self.f2_power + 20) * math.sin(self.an) + 5 * math.cos(self.an)
+        y22 = self.y - (self.f2_power + 20) * math.cos(self.an) + 5 * math.sin(self.an)
+        x22 = self.x - (self.f2_power + 20) * math.sin(self.an) - 5 * math.cos(self.an)
         pygame.draw.polygon(self.screen, self.color, [[x11, y11], [x12, y12], [x21, y21], [x22, y22]])
-
+        pygame.draw.circle(self.screen, [29,150,20], [self.x, self.y], 20)
+        x1 = self.x - 30
+        y1 = self.y
+        x2 = self.x - 30
+        y2 = self.y + 10
+        x3 = self.x - 20
+        y3 = self.y + 20
+        x4 = self.x + 30
+        y4 = self.y
+        x5 = self.x + 30
+        y5 = self.y + 10
+        x6 = self.x + 20
+        y6 = self.y + 20
+        pygame.draw.polygon(self.screen, [29,100,20], [[x1, y1], [x2, y2], [x3, y3], [x6, y6], [x5, y5], [x4, y4]])
 class Target:
     def __init__(self):
         self.screen = screen
@@ -225,6 +259,15 @@ class Target:
 
         self.x += self.vx
         self.y -= self.vy
+        if (self.x + self.r >= WIDTH) and (self.vx > 0):
+            self.vx *= -1
+        elif (self.x - self.r <= 0) and (self.vx < 0):
+            self.vx *= -1
+        if (self.y + self.r >= HEIGHT - 200) and (self.vy < 0):
+            self.vy *= -1
+        elif (self.y - self.r <= 0) and (self.vy > 0):
+            self.vy *= -1
+
     def draw(self):
         pygame.draw.circle(self.screen, self.color, [self.x, self.y], self.r)
 
@@ -237,16 +280,27 @@ balls = []
 clock = pygame.time.Clock()
 gun = Gun(screen)
 tank = Tank(screen)
-target = Target()
+
+targets = []
+for i in range(2):
+    targets.append(Target())
+
 finished = False
 
 while not finished:
     screen.fill(WHITE)
+    tank.move()
     tank.draw()
-    target.move()
-    target.draw()
-    for b in balls:
-        b.draw()
+    for target in targets:
+        target.move()
+        target.draw()
+    for b in range(len(balls)):
+        balls[b].move()
+        balls[b].draw()
+        balls[b].live += -1
+        if balls[b].live == 0:
+            del balls[b]
+
     pygame.display.update()
 
     clock.tick(FPS)
@@ -260,12 +314,13 @@ while not finished:
         elif event.type == pygame.MOUSEMOTION:
             tank.targetting(event)
 
-    for b in balls:
-        b.move()
-        if b.hittest(target) and target.live:
-            target.live = 0
-            target.hit()
-            target.new_target()
-    tank.power_up()
+    for target in targets:
+        for b in balls:
+
+            if b.hittest(target) and target.live:
+                target.live = 0
+                target.hit()
+                target.new_target()
+        tank.power_up()
 
 pygame.quit()
