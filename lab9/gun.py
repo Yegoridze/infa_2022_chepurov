@@ -21,6 +21,8 @@ WIDTH = 800
 HEIGHT = 600
 GRAV = 3
 
+SCORE = 0
+
 
 class Ball:
     def __init__(self, screen: pygame.Surface, x, y):
@@ -72,16 +74,67 @@ class Ball:
         Returns:
             Возвращает True в случае столкновения мяча и цели. В противном случае возвращает False.
         """
+        global SCORE
         len = ((self.x - obj.x) ** 2 + (self.y - obj.y) ** 2) ** 0.5
         hit = 0
         if len < self.r + obj.r:
             hit = 1
+            SCORE += 1
+            print(SCORE)
         return hit
 
 
 class Knipel:
-    pass
+    def __init__(self, screen: pygame.Surface, x, y, an):
+        """ Конструктор класса knipel
 
+        Args:
+        x - начальное положение книпеля по горизонтали
+        y - начальное положение книпеля по вертикали
+        l - длина книпеля
+        elong - удлиннение за один кадр
+        an - угол, на который повернут книпель
+        """
+        self.screen = screen
+        self.x = x
+        self.y = y
+        self.l = 5
+        self.elong = 2
+        self.an = an
+        self.omega = 0.2
+        self.vx = 0
+        self.vy = 0
+        self.color = BLACK
+        self.live = 30
+
+    def move(self):
+        """Переместить книпель по прошествии единицы времени.
+
+        Метод описывает перемещение книпеля за один кадр перерисовки. То есть, обновляет значения
+        self.x и self.y с учетом скоростей self.vx и self.vy и силы гравитации, действующей на мяч,
+        а также поворачивает книпель на угол self.omega и удлинняет его на self.elong.
+        """
+
+        self.x += self.vx
+        self.y -= self.vy
+        self.vy -= GRAV
+        self.an += self.omega
+        self.l += self.elong
+        if (self.x >= WIDTH) and (self.vx > 0):
+            self.vx *= -1
+        elif (self.x <= 0) and (self.vx < 0):
+            self.vx *= -1
+        if (self.y <= 0) and (self.vy > 0):
+            self.vy *= -1
+
+    def draw(self):
+        x1 = self.x + self.l * math.sin(self.an)
+        y1 = self.y + self.l * math.cos(self.an)
+        x2 = self.x - self.l * math.sin(self.an)
+        y2 = self.y - self.l * math.cos(self.an)
+        pygame.draw.line(self.screen, self.color, [x1, y1], [x2, y2], 3)
+        pygame.draw.circle(self.screen, self.color, [x1, y1], 3)
+        pygame.draw.circle(self.screen, self.color, [x2, y2], 3)
 
 class Gun:
     def __init__(self, screen):
@@ -150,7 +203,14 @@ class Tank():
         self.f2_on = 0
         self.an = 0
         self.color = GREEN
-        self.bullet = 1
+        self.bullet_type = 2
+
+    def bullet_change(self):
+        pressed_keys = pygame.key.get_pressed()
+        if pressed_keys[pygame.K_1]:
+            self.bullet_type = 1
+        elif pressed_keys[pygame.K_2]:
+            self.bullet_type = 2
 
     def targetting(self, event):
         """Прицеливание. Зависит от положения мыши."""
@@ -160,6 +220,7 @@ class Tank():
             self.color = RED
         else:
             self.color = GREY
+
     def fire2_start(self, event):
         self.f2_on = 1
 
@@ -169,17 +230,28 @@ class Tank():
         Происходит при отпускании кнопки мыши.
         Начальные значения компонент скорости мяча vx и vy зависят от положения мыши.
         """
-        global balls, bullet
-        bullet += 1
-        new_ball = Ball(self.screen, self.x, self.y)
-        new_ball.r += 5
-        if event.pos[1] < self.y:
-            self.an = math.atan((event.pos[0]-self.x) / (event.pos[1]-self.y))
-        new_ball.vx = - self.f2_power * math.sin(self.an)
-        new_ball.vy = self.f2_power * math.cos(self.an)
-        balls.append(new_ball)
-        self.f2_on = 0
-        self.f2_power = 10
+        global balls, knipels, bullet
+        if self.bullet_type == 1:
+            bullet += 1
+            new_ball = Ball(self.screen, self.x, self.y)
+            new_ball.r += 5
+            if event.pos[1] < self.y:
+                self.an = math.atan((event.pos[0]-self.x) / (event.pos[1]-self.y))
+            new_ball.vx = - self.f2_power * math.sin(self.an)
+            new_ball.vy = self.f2_power * math.cos(self.an)
+            balls.append(new_ball)
+            self.f2_on = 0
+            self.f2_power = 10
+        else:
+            bullet += 1
+            new_knipel = Knipel(self.screen, self.x, self.y, self.an)
+            if event.pos[1] < self.y:
+                self.an = math.atan((event.pos[0] - self.x) / (event.pos[1] - self.y))
+            new_knipel.vx = - self.f2_power * math.sin(self.an)
+            new_knipel.vy = self.f2_power * math.cos(self.an)
+            knipels.append(new_knipel)
+            self.f2_on = 0
+            self.f2_power = 10
 
     def power_up(self):
         if self.f2_on:
@@ -223,6 +295,8 @@ class Tank():
         x6 = self.x + 20
         y6 = self.y + 20
         pygame.draw.polygon(self.screen, [29,100,20], [[x1, y1], [x2, y2], [x3, y3], [x6, y6], [x5, y5], [x4, y4]])
+
+
 class Target:
     def __init__(self):
         self.screen = screen
@@ -276,6 +350,7 @@ pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 bullet = 0
 balls = []
+knipels = []
 
 clock = pygame.time.Clock()
 gun = Gun(screen)
@@ -291,15 +366,22 @@ while not finished:
     screen.fill(WHITE)
     tank.move()
     tank.draw()
+    tank.bullet_change()
     for target in targets:
         target.move()
         target.draw()
-    for b in range(len(balls)):
+    for b in range(len(balls) - 1, -1, -1):
         balls[b].move()
         balls[b].draw()
         balls[b].live += -1
         if balls[b].live == 0:
             del balls[b]
+    for k in range(len(knipels) - 1, -1, -1):
+        knipels[k].move()
+        knipels[k].draw()
+        knipels[k].live += -1
+        if knipels[k].live == 0:
+            del knipels[k]
 
     pygame.display.update()
 
@@ -309,6 +391,7 @@ while not finished:
             finished = True
         elif event.type == pygame.MOUSEBUTTONDOWN:
             tank.fire2_start(event)
+
         elif event.type == pygame.MOUSEBUTTONUP:
             tank.fire2_end(event)
         elif event.type == pygame.MOUSEMOTION:
