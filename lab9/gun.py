@@ -59,6 +59,7 @@ class Ball:
             self.vy *= -1
 
     def draw(self):
+        """Рисует мяч с указанными координатами, радиусом и указанного цвета"""
         pygame.draw.circle(
             self.screen,
             self.color,
@@ -111,7 +112,7 @@ class Knipel:
         """Переместить книпель по прошествии единицы времени.
 
         Метод описывает перемещение книпеля за один кадр перерисовки. То есть, обновляет значения
-        self.x и self.y с учетом скоростей self.vx и self.vy и силы гравитации, действующей на мяч,
+        self.x и self.y с учетом скоростей self.vx и self.vy и силы гравитации, действующей на книпель,
         а также поворачивает книпель на угол self.omega и удлинняет его на self.elong.
         """
 
@@ -128,6 +129,7 @@ class Knipel:
             self.vy *= -1
 
     def draw(self):
+        """Рисует книпель длины self.l с грузами на концах, учитывая угол поворота self.an"""
         x1 = self.x + self.l * math.sin(self.an)
         y1 = self.y + self.l * math.cos(self.an)
         x2 = self.x - self.l * math.sin(self.an)
@@ -160,65 +162,12 @@ class Knipel:
         return hit
 
 
-class Gun:
-    def __init__(self, screen):
-        self.screen = screen
-        self.f2_power = 10
-        self.f2_on = 0
-        self.an = 1
-        self.color = GREY
-
-    def fire2_start(self):
-        self.f2_on = 1
-
-    def fire2_end(self, event):
-        """Выстрел мячом.
-
-        Происходит при отпускании кнопки мыши.
-        Начальные значения компонент скорости мяча vx и vy зависят от положения мыши.
-        """
-        global balls, bullet
-        bullet += 1
-        new_ball = Ball(self.screen)
-        new_ball.r += 5
-        self.an = math.atan2((event.pos[1]-new_ball.y), (event.pos[0]-new_ball.x))
-        new_ball.vx = self.f2_power * math.cos(self.an)
-        new_ball.vy = - self.f2_power * math.sin(self.an)
-        balls.append(new_ball)
-        self.f2_on = 0
-        self.f2_power = 10
-
-    def targetting(self, event):
-        """Прицеливание. Зависит от положения мыши."""
-        if event and (event.pos[0] > 20):
-            self.an = math.atan((event.pos[1]-450) / (event.pos[0]-20))
-        if self.f2_on:
-            self.color = RED
-        else:
-            self.color = GREY
-
-    def draw(self):
-        x11 = 40 - 5 * math.sin(self.an)
-        y11 = 450 + 5 * math.cos(self.an)
-        x12 = 40 + 5 * math.sin(self.an)
-        y12 = 450 - 5 * math.cos(self.an)
-
-        x21 = 40 + (self.f2_power + 10) * math.cos(self.an) + 5 * math.sin(self.an)
-        y21 = 450 + (self.f2_power + 10) * math.sin(self.an) - 5 * math.cos(self.an)
-        x22 = 40 + (self.f2_power + 10) * math.cos(self.an) - 5 * math.sin(self.an)
-        y22 = 450 + (self.f2_power + 10) * math.sin(self.an) + 5 * math.cos(self.an)
-        pygame.draw.polygon(self.screen, self.color, [[x11, y11], [x12, y12], [x21, y21], [x22, y22]])
-
-    def power_up(self):
-        if self.f2_on:
-            if self.f2_power < 100:
-                self.f2_power += 1
-            self.color = RED
-        else:
-            self.color = GREY
-
-
 class Tank():
+    """
+    Класс танков. Обладает координатами (изменяемой x и постоянной y), флагом начала выстрела self.f2_on,
+    силой выстрела self.f2_power, увеличиваемой при зажатии мыши, типом снаряда self.bullet_type - числом 1 или 2,
+    углом наклона орудия self.an, цветом self.color и флагом жизни self.live
+    """
     def __init__(self, screen):
         self.screen = screen
         self.x = 400
@@ -231,6 +180,7 @@ class Tank():
         self.live = 1
 
     def bullet_change(self):
+        """Клавишами 1 и 2 позволяет переключаться между снарядами танка - мячом и книпелем"""
         pressed_keys = pygame.key.get_pressed()
         if pressed_keys[pygame.K_1]:
             self.bullet_type = 1
@@ -238,7 +188,7 @@ class Tank():
             self.bullet_type = 2
 
     def targetting(self, event):
-        """Прицеливание. Зависит от положения мыши."""
+        """Прицеливание. Зависит от положения смещаемой мыши."""
         if event and (event.pos[1] < self.y):
             self.an = math.atan((event.pos[0]-self.x) / (event.pos[1]-self.y))
         if self.f2_on:
@@ -247,11 +197,11 @@ class Tank():
             self.color = GREY
 
     def fire2_start(self, event):
+        """означает начало выстрела и увеличения начальной скорости снарда"""
         self.f2_on = 1
 
     def fire2_end(self, event):
-        """Выстрел мячом.
-
+        """Выстрел снарядом.
         Происходит при отпускании кнопки мыши.
         Начальные значения компонент скорости мяча vx и vy зависят от положения мыши.
         """
@@ -279,6 +229,7 @@ class Tank():
             self.f2_power = 10
 
     def power_up(self):
+        """Если зажата кнопка мыши, увеличивает начальную скорость снаряда на 1 за 1 кадр перерисовки"""
         if self.f2_on:
             if self.f2_power < 100:
                 self.f2_power += 1
@@ -287,6 +238,11 @@ class Tank():
             self.color = GREY
 
     def move(self):
+        """
+        Перемещает танк или влево на 7 пикселей, если в момент вызова зажата кнопка A и не зажата D,
+        или вправо на 7 пикселей, если в момент вызова зажата кнопка D и не зажата A,
+        в противном случае танк остаётся на месте
+        """
         speed = 0
         pressed_keys = pygame.key.get_pressed()
         if pressed_keys[97] and (not (pressed_keys[100])) and self.x > 20:
@@ -321,6 +277,7 @@ class Tank():
                 self.live = 0
 
     def draw(self):
+        """Рисует гусеничный танк с повернутым в направлении курсора орудием"""
         y11 = self.y + 5 * math.sin(self.an)
         x11 = self.x - 5 * math.cos(self.an)
         y12 = self.y - 5 * math.sin(self.an)
@@ -348,6 +305,17 @@ class Tank():
 
 
 class Target:
+    """
+    Класс круглых целей для танка. Движутся в случайных направлениях без учёта гравитации
+    с отражением от невидимых стен над танком.
+        self.live - флаг жизни
+        self.x = горизонтальная уоордината
+        self.y = вертикальная координата
+        self.vx = горизонтальная скорость
+        self.vy = вертикальная скорость
+        self.r = радиус цели
+        self.color = цвет цели
+    """
     def __init__(self):
         self.screen = screen
         self.points = 0
@@ -374,8 +342,8 @@ class Target:
         self.points += points
 
     def move(self):
-        """Переместить уель по прошествии единицы времени.
-
+        """
+        Переместить уель по прошествии единицы времени.
         Метод описывает перемещение цели за один кадр перерисовки. То есть, обновляет значения
         self.x и self.y с учетом скоростей self.vx и self.vy
         """
@@ -395,19 +363,19 @@ class Target:
         pygame.draw.circle(self.screen, self.color, [self.x, self.y], self.r)
 
 
-class Bomb(Ball):
+class Bomb():
     """
     Класс бомб. Обладает горизонтальными и вертикальными координатами и скоростями x, y и vx, xy.
-    Экземпляры создаются самолётом и падают по вертикали. При достижении определённой y-координаты,
+    Экземпляры создаются самолётом и падают по параболе. При достижении определённой y-координаты,
     увеличивается в размерах, "взрываясь". При соприкосновении с танком срабатывает
     функция танка, обнулябщая его жизни.
     """
-    def __init__(self, screen: pygame.Surface, x, y):
+    def __init__(self, screen: pygame.Surface, x, y, vx):
         self.screen = screen
         self.x = x
         self.y = y
         self.r = 15
-        self.vx = 0
+        self.vx = vx
         self.vy = 0
         self.color = BLACK
         self.live = 30
@@ -415,9 +383,10 @@ class Bomb(Ball):
     def move(self):
         """
         Переместить бомбу по прошествии единицы времени с учётом гравитации.
-        Метод описывает перемещение мяча за один кадр перерисовки.
+        Метод описывает перемещение бомбы за один кадр перерисовки.
         """
         self.y -= self.vy
+        self.x += self.vx
         self.vy -= GRAV
         if self.y >= 540:
             self.r = 40
@@ -432,13 +401,18 @@ class Bomb(Ball):
 
 
 class F117(Target):
+    """
+    Класс тактических бомбардировщиков. Движутся по горизонтали, начинают движение за левой частью экрана,
+    заканчивают за правой, после чего перегенерируются методом new_plane и вылетают заново из левой части экрана.
+    Сбрасывают бомбы с помощью метода bombing
+    """
     def __init__(self):
         self.screen = screen
         self.points = 0
         self.live = 1
-        self.x = randint(100, 700)
+        self.x = -40
         self.y = randint(100, 300)
-        self.vx = randint(-5, 5)
+        self.vx = randint(2, 7)
         self.vy = 0
         self.r = 35
         self.color = [160, 160, 180]
@@ -447,18 +421,33 @@ class F117(Target):
     def new_plane(self):
         """ Инициализация новой цели. """
 
-        self.x = randint(100, 700)
+        self.x = -40
         self.y = randint(100, 400)
         self.r = randint(25, 50)
-        self.vx = randint(-5, 5)
+        self.vx = randint(2, 7)
         self.vy = 0
         self.live = 1
+        self.bomb_reload = 0
 
     def bombing(self):
+        """Создаёт и возвращает объект класса Bomb c координатами и скоростью самолёта"""
         print('вжжжжжуууууууууууБАМ')
-        return Bomb(self.screen, self.x, self.y)
+        return Bomb(self.screen, self.x, self.y, self.vx)
+
+    def move(self):
+        """
+        Переместить самолёт по прошествии единицы времени.
+        Метод описывает перемещение цели за один кадр перерисовки. То есть, обновляет значение
+        self.x с учетом скорости self.vx (self.vy == 0 для любого самолёта), а если самолёт
+        вылетает за пределы экрана, помещает его в противоположную точку экрана
+        """
+
+        self.x += self.vx
+        if self.x > WIDTH + 40:
+            self.new_plane()
 
     def draw(self):
+        """Рисует самолёт с крыльями"""
         x1 = self.x - 25
         y1 = self.y - 7
         x2 = self.x - 25
@@ -491,7 +480,6 @@ balls = []
 knipels = []
 
 clock = pygame.time.Clock()
-gun = Gun(screen)
 tank = Tank(screen)
 
 targets = []
@@ -499,7 +487,7 @@ planes = []
 bombs = []
 for i in range(2):
     targets.append(Target())
-for i in range(1):
+for i in range(3):
     planes.append(F117())
 
 finished = False
@@ -518,7 +506,7 @@ while not finished:
     for plane in planes:
         plane.move()
         plane.draw()
-        if plane.bomb_reload + randint(-60, 60) >= 200:
+        if plane.bomb_reload + randint(-30, 30) >= 100:
             plane.bomb_reload = 0
             bombs.append(plane.bombing())
         else:
